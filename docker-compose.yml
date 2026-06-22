@@ -1,0 +1,105 @@
+name: gegentic
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: obiguard_api,supertokens
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-multiple-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-postgres-dbs.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:9.3
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgresql://postgres:postgres@postgres:5432/supertokens
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3567/hello"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:latest
+    restart: unless-stopped
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  api-migration:
+    image: gegentic/api-migration:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/obiguard_api
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/obiguard_api
+    restart: "no"
+
+  api:
+    image: gegentic/api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      supertokens:
+        condition: service_healthy
+      api-migration:
+        condition: service_completed_successfully
+    ports:
+      - "4001:4001"
+      - "4002:4002"
+    env_file:
+      - .env
+    environment:
+      PORT: 4001
+      PROTOBUF_PORT: 4002
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/obiguard_api
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/obiguard_api
+      SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
+      LLM_GATEWAY_SERVICE_HOST: http://gateway:8787
+      API_HOST: http://api:4001
+      FRONTEND_HOST: http://localhost:3002
+      SELF_HOSTED: "true"
+
+  guardian:
+    image: gegentic/guardian:latest
+    restart: unless-stopped
+    depends_on:
+      - qdrant
+    ports:
+      - "8700:8700"
+    env_file:
+      - .env
+    environment:
+      API_SERVICE_HOST: http://api:4001
+      QDRANT_URL: http://qdrant:6333
+
+  gateway:
+    image: gegentic/gateway:latest
+    restart: unless-stopped
+    depends_on:
+      - api
+      - guardian
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      API_SERVICE_HOST: http://api:4001
+      GUARDRAILS_SERVICE_HOST: http://guardian:8700
+
+volumes:
+  postgres_data:
+  qdrant_data:
