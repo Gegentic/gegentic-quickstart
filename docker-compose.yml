@@ -100,6 +100,29 @@ services:
       API_SERVICE_HOST: http://api:4001
       GUARDRAILS_SERVICE_HOST: http://guardian:8700
 
+  # Only NEXT_PUBLIC_API_URL/WWW_URL/WEBSITE_URL are runtime-configurable on
+  # this image (see obiguard-portal-service's Dockerfile.gegentic +
+  # docker-entrypoint.gegentic.sh) -- everything else (brand name, copyright,
+  # posthog key, etc.) is fixed for the gegentic brand at that image's build
+  # time and can't be overridden here. These three must be host-reachable
+  # (http://localhost:4001), NOT the internal docker-compose service name
+  # (http://api:4001) -- they're read by client-side JS running in your
+  # browser on the host machine, which can't resolve docker-network-internal
+  # hostnames.
+  portal:
+    image: gegentic/portal:latest
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3002:3000"
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4001
+      NEXT_PUBLIC_WWW_URL: http://localhost:3002
+      NEXT_PUBLIC_WEBSITE_URL: http://localhost:3001
+
 volumes:
   postgres_data:
   qdrant_data:
