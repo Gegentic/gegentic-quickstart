@@ -33,12 +33,6 @@ services:
       timeout: 5s
       retries: 10
 
-  qdrant:
-    image: qdrant/qdrant:v1.16.1
-    restart: unless-stopped
-    volumes:
-      - qdrant_data:/qdrant/storage
-
   api-migration:
     image: gegentic/api-migration:latest
     depends_on:
@@ -97,7 +91,6 @@ services:
     image: gegentic/guardian:latest
     restart: unless-stopped
     depends_on:
-      - qdrant
       - tracing
     ports:
       - "8700:8700"
@@ -105,7 +98,6 @@ services:
       - .env
     environment:
       API_SERVICE_HOST: http://api:4001
-      QDRANT_URL: http://qdrant:6333
       TRACING_SERVICE_HOST: http://tracing:5001
 
   gateway:
@@ -148,4 +140,3 @@ services:
 
 volumes:
   postgres_data:
-  qdrant_data:
