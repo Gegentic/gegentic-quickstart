@@ -78,6 +78,9 @@ services:
       CLICKHOUSE_USER: tracing
       CLICKHOUSE_PASSWORD: tracing
       CLICKHOUSE_DB: gegentic_tracing
+    ports:
+      - "8123:8123"
+      - "9000:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     healthcheck:
