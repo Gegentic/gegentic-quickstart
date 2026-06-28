@@ -16,7 +16,7 @@ publish_to_github:
   script:
     - git config user.email "ci@obiguard.com"
     - git config user.name "GitLab CI"
-    - git remote add github "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git" || git remote set-url github "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git"
+    - git remote add github "https://${GITHUB_USER_GEGENTIC}:${GITHUB_TOKEN_GEGENTIC}@github.com/gegentic/gegentic-quickstart.git" || git remote set-url github "https://${GITHUB_USER_GEGENTIC}:${GITHUB_TOKEN_GEGENTIC}@github.com/gegentic/gegentic-quickstart.git"
     - git fetch github "${GITHUB_BRANCH:-main}"
     - git checkout -B github-mirror FETCH_HEAD
     - git merge --no-commit --no-ff "$CI_COMMIT_SHA"
