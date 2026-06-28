@@ -60,8 +60,6 @@ services:
     env_file:
       - .env
     environment:
-      PORT: 4001
-      PROTOBUF_PORT: 4002
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/gegentic_api
       SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
       LLM_GATEWAY_SERVICE_HOST: http://gateway:8787
