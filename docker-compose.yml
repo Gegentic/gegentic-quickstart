@@ -78,13 +78,14 @@ services:
       CLICKHOUSE_USER: tracing
       CLICKHOUSE_PASSWORD: tracing
       CLICKHOUSE_DB: gegentic_tracing
+      CLICKHOUSE_LISTEN_HOST: 0.0.0.0
     ports:
       - "8123:8123"
       - "9000:9000"
     volumes:
       - clickhouse_data:/var/lib/clickhouse
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8123/ping"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
       interval: 5s
       timeout: 5s
       retries: 10
