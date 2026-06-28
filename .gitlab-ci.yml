@@ -1,0 +1,23 @@
+stages:
+  - publish
+
+variables:
+  GIT_DEPTH: "0"
+
+publish_to_github:
+  stage: publish
+  image: alpine/git:latest
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  allow_failure: false
+  script:
+    - git config user.email "ci@obiguard.com"
+    - git config user.name "GitLab CI"
+    - git remote add github "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git" || git remote set-url github "https://${GITHUB_USER}:${GITHUB_TOKEN}@github.com/${GITHUB_REPO}.git"
+    - git fetch github "${GITHUB_BRANCH:-main}"
+    - git checkout -B github-mirror FETCH_HEAD
+    - git merge --no-commit --no-ff "$CI_COMMIT_SHA"
+    - git rm -f --ignore-unmatch .gitlab-ci.yml
+    - git commit -m "Merge ${CI_COMMIT_SHORT_SHA} from GitLab"
+    - git push github "github-mirror:refs/heads/${GITHUB_BRANCH:-main}"
