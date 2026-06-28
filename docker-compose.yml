@@ -1,0 +1,171 @@
+name: gegentic
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: gegentic_api,supertokens,gegentic_tracing
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-multiple-postgres-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-postgres-dbs.sh:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  supertokens:
+    image: registry.supertokens.io/supertokens/supertokens-postgresql:9.3
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRESQL_CONNECTION_URI: postgresql://postgres:postgres@postgres:5432/supertokens
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3567/hello"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api-migration:
+    image: gegentic/api-migration:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/gegentic_api
+    restart: "no"
+
+  api:
+    image: gegentic/api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      supertokens:
+        condition: service_healthy
+      api-migration:
+        condition: service_completed_successfully
+      tracing:
+        condition: service_started
+    ports:
+      - "4001:4001"
+      - "4002:4002"
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/gegentic_api
+      SUPERTOKENS_CONNECTION_URI: http://supertokens:3567
+      LLM_GATEWAY_SERVICE_HOST: http://gateway:8787
+      API_HOST: http://localhost:4001
+      FRONTEND_HOST: http://localhost:3002
+      PORTAL_BASE_URL: http://localhost:3002
+      TRACING_SERVICE_HOST: http://tracing:5001
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.5.1.1763-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+      CLICKHOUSE_USER: tracing
+      CLICKHOUSE_PASSWORD: tracing
+      CLICKHOUSE_DB: gegentic_tracing
+      CLICKHOUSE_LISTEN_HOST: 0.0.0.0
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  tracing:
+    image: gegentic/tracing:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "5001:5001"
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_ENVIRONMENT: production
+      POSTGRES_HOST: postgres:5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DATABASE: gegentic_tracing
+      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/gegentic_tracing
+      POSTGRES_PRISMA_URL: postgres://postgres:postgres@postgres:5432/gegentic_tracing?pgbouncer=true&connect_timeout=15
+      CLICK_HOUSE_HOST: http://clickhouse:8123
+      CLICK_HOUSE_USER: tracing
+      CLICK_HOUSE_PASSWORD: tracing
+      CLICK_HOUSE_DATABASE_NAME: gegentic_tracing
+      TRACES_TABLE_NAME: traces
+
+  guardian:
+    image: gegentic/guardian:latest
+    restart: unless-stopped
+    depends_on:
+      - tracing
+    ports:
+      - "8700:8700"
+    env_file:
+      - .env
+    environment:
+      API_SERVICE_HOST: http://api:4001
+      TRACING_SERVICE_HOST: http://tracing:5001
+
+  gateway:
+    image: gegentic/gateway:latest
+    restart: unless-stopped
+    depends_on:
+      - api
+      - guardian
+    ports:
+      - "8787:8787"
+    env_file:
+      - .env
+    environment:
+      API_SERVICE_HOST: http://api:4001
+      GUARDRAILS_SERVICE_HOST: http://guardian:8700
+      TRACING_SERVICE_HOST: http://tracing:5001
+
+  # Only NEXT_PUBLIC_API_URL/WWW_URL/WEBSITE_URL are runtime-configurable on
+  # this image (see obiguard-portal-service's Dockerfile.gegentic +
+  # docker-entrypoint.gegentic.sh) -- everything else (brand name, copyright,
+  # posthog key, etc.) is fixed for the gegentic brand at that image's build
+  # time and can't be overridden here. These three must be host-reachable
+  # (http://localhost:4001), NOT the internal docker-compose service name
+  # (http://api:4001) -- they're read by client-side JS running in your
+  # browser on the host machine, which can't resolve docker-network-internal
+  # hostnames.
+  portal:
+    image: gegentic/portal:latest
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "3002:3000"
+    env_file:
+      - .env
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:4001
+      NEXT_PUBLIC_WWW_URL: http://localhost:3002
+      NEXT_PUBLIC_WEBSITE_URL: http://localhost:3001
+
+volumes:
+  postgres_data:
+  clickhouse_data:
