@@ -32,9 +32,6 @@ docker compose up
 
 `tracing` gets its own Postgres database (`gegentic_tracing`, created via `POSTGRES_MULTIPLE_DATABASES`) and its own ClickHouse database (`gegentic_tracing`, created via `CLICKHOUSE_DB` on the `clickhouse` service and re-asserted idempotently by `tracing`'s entrypoint).
 
-## Known gaps
-- **Portal's runtime config is intentionally limited to 3 vars, and depends on a CI change not yet built/published.** Only `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_WWW_URL`, and `NEXT_PUBLIC_WEBSITE_URL` are runtime-configurable on `gegentic/portal`. The mechanism: a dedicated `Dockerfile.gegentic` (separate from the production `Dockerfile`) builds the 3 configurable vars as sentinel placeholder tokens, and `docker-entrypoint.gegentic.sh` substitutes them with real env vars at container start. **This only takes effect once that repo's CI has rebuilt and republished `gegentic/portal:latest` using the new `Dockerfile.gegentic`** (its `.gitlab-ci.yml` was updated to use `--file Dockerfile.gegentic`) — until then, `gegentic/portal:latest` is still the old bake-at-build-time image.
-
 ## Updating
 
 This stack always pulls `:latest` for each `gegentic/*` image. Run `docker compose pull && docker compose up -d` to update.
