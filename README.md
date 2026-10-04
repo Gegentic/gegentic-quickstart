@@ -32,6 +32,16 @@ docker compose up
 
 `tracing` gets its own Postgres database (`gegentic_tracing`, created via `POSTGRES_MULTIPLE_DATABASES`) and its own ClickHouse database (`gegentic_tracing`, created via `CLICKHOUSE_DB` on the `clickhouse` service and re-asserted idempotently by `tracing`'s entrypoint).
 
+## Locking down the tracing service (optional)
+
+The tracing service (port 5001) is published on the host. By default it accepts trace uploads and trace reads from anything that can reach that port, and it holds your prompts and responses. To restrict it to the stack's own services:
+
+1. Generate a secret: `openssl rand -hex 32`
+2. In `.env`, uncomment and fill in `INTERNAL_SERVICE_SHARED_SECRET`, and uncomment `TRACING_AUTH_MODE=enforce`.
+3. `docker compose pull && docker compose up -d`. Pull first: images from before this feature don't send the secret, so enforcing would block their trace uploads.
+
+The api, gateway and guardian send the secret; tracing answers `401` to calls without it. To find anything you missed before enforcing, set `TRACING_AUTH_MODE=report` instead, which logs calls that lack the secret but lets them through. A script that posts traces straight to port 5001 (for example with a trace SDK) will be refused once enforced; send them through the gateway's `/api/trace` with an access key instead.
+
 ## Updating
 
 This stack always pulls `:latest` for each `gegentic/*` image. Run `docker compose pull && docker compose up -d` to update.
