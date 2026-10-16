@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_MULTIPLE_DATABASES: gegentic_api,supertokens,gegentic_tracing
+      POSTGRES_MULTIPLE_DATABASES: gegentic_api,supertokens
     ports:
       - "5432:5432"
     volumes:
@@ -93,8 +93,6 @@ services:
     image: gegentic/tracing:latest
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
       clickhouse:
         condition: service_healthy
     ports:
@@ -103,12 +101,6 @@ services:
       - .env
     environment:
       NEXT_PUBLIC_ENVIRONMENT: production
-      POSTGRES_HOST: postgres:5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DATABASE: gegentic_tracing
-      POSTGRES_URL: postgres://postgres:postgres@postgres:5432/gegentic_tracing
-      POSTGRES_PRISMA_URL: postgres://postgres:postgres@postgres:5432/gegentic_tracing?pgbouncer=true&connect_timeout=15
       CLICK_HOUSE_HOST: http://clickhouse:8123
       CLICK_HOUSE_USER: tracing
       CLICK_HOUSE_PASSWORD: tracing

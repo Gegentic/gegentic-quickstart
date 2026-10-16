@@ -28,9 +28,9 @@ docker compose up
 | supertokens | 3567 (internal only) | `registry.supertokens.io/supertokens/supertokens-postgresql:9.3` |
 | portal | 3002 | `gegentic/portal:latest` |
 
-`api-migration` runs `prisma migrate deploy` against Postgres and exits; `api` waits for it to complete successfully (`depends_on: condition: service_completed_successfully`) before starting. `tracing` runs its own Prisma migrations and ClickHouse schema setup idempotently on every container start (see its `entrypoint.sh`) — no separate migration job is needed for it; `api`/`guardian` only need to wait for it to start, not complete.
+`api-migration` runs `prisma migrate deploy` against Postgres and exits; `api` waits for it to complete successfully (`depends_on: condition: service_completed_successfully`) before starting. `tracing` runs its ClickHouse schema setup idempotently on every container start (see its `entrypoint.sh`) — no separate migration job is needed for it; `api`/`guardian` only need to wait for it to start, not complete.
 
-`tracing` gets its own Postgres database (`gegentic_tracing`, created via `POSTGRES_MULTIPLE_DATABASES`) and its own ClickHouse database (`gegentic_tracing`, created via `CLICKHOUSE_DB` on the `clickhouse` service and re-asserted idempotently by `tracing`'s entrypoint).
+`tracing` uses ClickHouse only, with its own database (`gegentic_tracing`, created via `CLICKHOUSE_DB` on the `clickhouse` service and re-asserted idempotently by `tracing`'s entrypoint).
 
 ## Locking down the tracing service (optional)
 
