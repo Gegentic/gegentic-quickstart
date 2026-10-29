@@ -11,7 +11,7 @@ docker compose up
 ```
 
 - **`LICENSE_KEY`** — `gegentic/api` runs in self-hosted mode and requires one. Register at [gegentic.com/gegentic/edu/register](https://gegentic.com/gegentic/edu/register) to get one by email. See [docs.gegentic.com](https://docs.gegentic.com) for more.
-- **`ENCRYPT_KEY_FOR_API_KEY`** / **`ENCRYPT_KEY_FOR_VIRTUAL_KEY`** — generate each with `openssl rand -hex 32`.
+- **`ENCRYPT_KEY_FOR_API_KEY`** / **`ENCRYPT_KEY_FOR_VIRTUAL_KEY`** — generate each with `openssl rand -hex 32`. `ENCRYPT_KEY_FOR_VIRTUAL_KEY` encrypts the AI provider credentials stored in Gegentic (it keeps its historical name).
 - **`OPENAI_API_KEY`** — needed for guardian's AI-based guardrails (jailbreak detection, compliance/LLM-judge checks). Any OpenAI-compatible endpoint works via `OPENAI_BASE_URL`.
 
 ## What's running
